@@ -10,6 +10,9 @@ def judge(joined, settings):
         gain = [name for name, value in (('A',a),('B',b)) if value < 0]
         rows.append({**pair, 'net_double_mdb': net, 'net_db': display(net), 'gain_ends': gain,
                      'reference_limit_mdb': maximum, 'code': verdict(net, maximum)})
-    return {'rows': rows, 'reference_limit_mdb': maximum, 'false_gain_count': sum(bool(r['gain_ends']) for r in rows),
-            'invalid_count': sum(r['code'] == 'INVALID_NET_GAIN' for r in rows),
-            'over_count': sum(r['code'] == 'OVER_LIMIT' for r in rows)}
+    result = {'rows': rows, 'reference_limit_mdb': maximum, 'false_gain_count': sum(bool(r['gain_ends']) for r in rows),
+              'invalid_count': sum(r['code'] == 'INVALID_NET_GAIN' for r in rows),
+              'over_count': sum(r['code'] == 'OVER_LIMIT' for r in rows)}
+    if settings.get('wavelengths_nm'):
+        result['wavelengths'] = settings['wavelengths_nm']
+    return result

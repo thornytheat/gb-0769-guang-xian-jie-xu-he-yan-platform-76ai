@@ -1,6 +1,22 @@
 <section class="panel archive">
   <h3>{{ '$ 运行快照' if section == 'archive' else '$ 签发核验' }}</h3>
   {% if issued %}<p role="status">{{ '已归档' if fresh else '复用首次运行' }} {{ issued.inspection_id[:12] }}</p>{% endif %}
-  {% if evidence %}<p class="result" data-state="{{ 'PASS' if evidence.approved else 'OVER_LIMIT' }}">{{ '可签发' if evidence.approved else '待处置' }} · {{ evidence.blockers|join(' / ') }}</p><p class="hash">{{ evidence.integrity_sha256 }}</p><a class="download" href="/api/export/{{ evidence.inspection_id }}">下载核验证据</a>{% endif %}
+  {% if evidence %}
+    {% if evidence.trial_pass %}
+    <p class="result" data-state="{{ 'PASS' if evidence.approved else 'OVER_LIMIT' }}">正式交工 · {{ '可签发' if evidence.approved else '待处置' }}{% if evidence.blockers %} · {{ evidence.blockers|join(' / ') }}{% endif %}</p>
+    <p class="result" data-state="{{ 'PASS' if evidence.trial_pass.released else 'OVER_LIMIT' }}">试通件 · {% if evidence.trial_pass.released %}放行 · 覆盖波长 {{ evidence.trial_pass.wavelengths|join(' nm、') }} nm{% elif evidence.trial_pass.suspended %}停止放行 · 补测证实超限{% else %}暂无可放行波长{% endif %}</p>
+    <div class="sheet"><table><thead><tr><th>波长</th><th>状态</th><th>接头</th><th>通过</th><th>超限</th><th>缺证</th></tr></thead><tbody>
+    {% for wl, item in evidence.wavelengths.items() %}<tr><td>{{ wl }} nm</td><td>{{ {'DUAL_END_PASS':'双端达标','INCOMPLETE':'缺双端证据','OVER_LIMIT':'超限','NO_DESIGN':'无设计点'}[item.status] }}</td><td>{{ item.joints }}</td><td>{{ item.passed }}</td><td>{{ item.over_limit }}</td><td>{{ item.missing }}</td></tr>{% endfor %}
+    </tbody></table></div>
+    {% if evidence.trial_pass.withheld %}<p>试通件未覆盖：{% for item in evidence.trial_pass.withheld %}{{ item.wavelength }} nm（{{ '超限' if item.reason == 'OVER_LIMIT' else '缺双端实测' }}）{{ ' · ' if not loop.last }}{% endfor %}</p>{% endif %}
+    {% if evidence.suspension.active %}<p class="issue" role="alert">停止放行证据：{% for item in evidence.suspension.evidence %}{{ item.wavelength }} nm · {{ item.joint or item.pair }} · {{ item.net_db }} dB{{ '；' if not loop.last }}{% endfor %}</p>{% endif %}
+    {% if evidence.conflicts %}<p class="issue" role="alert">补测冲突待处置：{% for item in evidence.conflicts %}{{ item.source|upper }}·{{ item.id }}·{{ item.wavelength }} nm{{ '；' if not loop.last }}{% endfor %}</p>{% endif %}
+    <p>{{ evidence.trial_pass.scope }}</p>
+    <ul>{% for condition in evidence.trial_pass.conditions %}<li>{{ condition }}</li>{% endfor %}</ul>
+    {% else %}
+    <p class="result" data-state="{{ 'PASS' if evidence.approved else 'OVER_LIMIT' }}">{{ '可签发' if evidence.approved else '待处置' }} · {{ evidence.blockers|join(' / ') }}</p>
+    {% endif %}
+    <p class="hash">{{ evidence.integrity_sha256 }}</p><a class="download" href="/api/export/{{ evidence.inspection_id }}">下载核验证据</a>
+  {% endif %}
   <div class="sheet"><table><thead><tr><th>核验编号</th><th>时间 UTC</th><th>版本</th><th>耗时 (ms)</th></tr></thead><tbody>{% for entry in entries %}<tr><td><a href="/inspect/certificate?inspection={{ entry.inspection_id }}">{{ entry.inspection_id[:15] }}</a></td><td>{{ entry.generated_at }}</td><td>{{ entry.rule }}</td><td>{{ entry.duration_ms }}</td></tr>{% else %}<tr><td colspan="4"><a href="/inspect/archive">先留档一次链路核验。</a></td></tr>{% endfor %}</tbody></table></div>
 </section>

@@ -1,0 +1,4 @@
+event,distance,unit,loss_db,wavelength
+B-01,800,m,0.08,1310
+B-02,500,m,0.10,1310
+B-03,200,m,0.11,1310

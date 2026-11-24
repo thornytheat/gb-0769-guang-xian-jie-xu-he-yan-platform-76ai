@@ -11,15 +11,18 @@ from .identity import canonical
 def session(database):
     Path(database).parent.mkdir(parents=True, exist_ok=True)
     with closing(sqlite3.connect(database, timeout=15)) as connection, connection:
-        connection.execute('CREATE TABLE IF NOT EXISTS inspections (id TEXT UNIQUE NOT NULL, document BLOB NOT NULL)')
+        connection.execute('CREATE TABLE IF NOT EXISTS inspections (id TEXT UNIQUE NOT NULL, line_id TEXT, document BLOB NOT NULL)')
+        columns = {row[1] for row in connection.execute('PRAGMA table_info(inspections)')}
+        if 'line_id' not in columns:
+            connection.execute('ALTER TABLE inspections ADD COLUMN line_id TEXT')
         yield connection
 
 
 def publish(database, manifest):
     with session(database) as db:
         key = manifest['inspection_id']
-        changed = db.execute('INSERT INTO inspections VALUES (?, ?) ON CONFLICT(id) DO NOTHING',
-                             (key, canonical(manifest))).rowcount
+        changed = db.execute('INSERT INTO inspections (id, line_id, document) VALUES (?, ?, ?) ON CONFLICT(id) DO NOTHING',
+                             (key, manifest.get('line_id'), canonical(manifest))).rowcount
         original = db.execute('SELECT document FROM inspections WHERE id=?',(key,)).fetchone()[0]
         return json.loads(original), changed == 1
 
@@ -30,6 +33,12 @@ def get(database, identifier):
         if not record:
             raise InspectionError('INSPECTION_NOT_FOUND', status=404)
         return json.loads(record[0])
+
+
+def for_line(database, line_id):
+    with session(database) as db:
+        rows = db.execute('SELECT document FROM inspections WHERE line_id=? ORDER BY rowid',(line_id,))
+        return [json.loads(data) for data, in rows]
 
 
 def recent(database):

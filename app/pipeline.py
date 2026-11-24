@@ -14,6 +14,9 @@ def run(material, stage='design'):
     if stage == 'trace':
         return output
     config = setup(material.get('settings'))
+    if 'wavelengths_nm' not in config and any(row.get('wavelength') is not None
+                                             for rows in output['trace']['traces'].values() for row in rows):
+        raise InspectionError('WAVELENGTH_UNDECLARED')
     output['calibration'] = calibrate(output['trace']['traces'], config)
     if stage == 'calibration':
         return output

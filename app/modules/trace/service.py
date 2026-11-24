@@ -4,7 +4,7 @@ from app.config import MAX_ROWS, SOURCES
 from app.errors import InspectionError
 from app.reasons import cell
 from .reader import read_rows
-from .units import distance, scaled
+from .units import distance, scaled, wavelength
 
 
 def normalize(source, fields):
@@ -12,7 +12,10 @@ def normalize(source, fields):
     position = distance(row['distance'], row['unit'])
     if source == 'design':
         return {'id': row['joint'], 'mm': position, 'limit_mdb': scaled(row['limit_db'], 1000, 0, 10000)}
-    return {'id': row['event'], 'mm': position, 'loss_mdb': scaled(row['loss_db'], 1000, -10000, 10000)}
+    parsed = {'id': row['event'], 'mm': position, 'loss_mdb': scaled(row['loss_db'], 1000, -10000, 10000)}
+    if 'wavelength' in row:
+        parsed['wavelength'] = wavelength(row['wavelength'])
+    return parsed
 
 
 def receive_source(source, text):
@@ -33,7 +36,7 @@ def receive_source(source, text):
             continue
         try:
             row = normalize(source, values)
-            grouped[row['id']].append((row, line, raw))
+            grouped[(row['id'], row.get('wavelength'))].append((row, line, raw))
         except ValueError as exc:
             mark(line, raw, str(exc))
     data = []

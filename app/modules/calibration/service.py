@@ -1,5 +1,6 @@
 def calibrate(traces, settings):
     ends, outliers = {}, []
+    declared = settings.get('wavelengths_nm')
     for endpoint, sign in (('a', 1), ('b', -1), ('design', 0)):
         aligned = []
         for row in traces[endpoint]:
@@ -8,7 +9,9 @@ def calibrate(traces, settings):
                 from_head = reading - settings[f'zero_{endpoint}_mm']
                 reading = from_head if sign == 1 else settings['length_mm'] - from_head
             evidence = {**row, 'chain_mm': reading}
-            if not 0 <= reading <= settings['length_mm'] and endpoint != 'design':
+            if endpoint != 'design' and declared and row.get('wavelength') is not None and row['wavelength'] not in declared:
+                outliers.append({**evidence, 'code': 'WAVELENGTH_UNDECLARED'})
+            elif not 0 <= reading <= settings['length_mm'] and endpoint != 'design':
                 outliers.append({**evidence, 'code': 'OUTSIDE_LINK'})
             elif not 0 <= reading <= settings['length_mm']:
                 aligned.append({**evidence, 'code': 'DESIGN_OUTSIDE_LINK'})

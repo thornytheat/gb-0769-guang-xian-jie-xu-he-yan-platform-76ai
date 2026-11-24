@@ -6,7 +6,7 @@ from .errors import InspectionError
 
 
 def sample(kind):
-    if kind not in ('clean','dirty'):
+    if kind not in ('clean','dirty','dual','dual_late','dual_full'):
         raise InspectionError('UNKNOWN_TRACE_SET', status=404)
     folder = DATA / kind
     return {'traces': {key:(folder / f'{key}.csv').read_text(encoding='utf-8') for key in SOURCES},

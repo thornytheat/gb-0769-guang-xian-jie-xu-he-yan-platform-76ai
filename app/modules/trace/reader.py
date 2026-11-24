@@ -4,6 +4,7 @@ from io import StringIO
 from app.errors import InspectionError
 
 TRACE = ('event', 'distance', 'unit', 'loss_db')
+TRACE_WAVELENGTH = TRACE + ('wavelength',)
 DESIGN = ('joint', 'distance', 'unit', 'limit_db')
 
 
@@ -12,7 +13,7 @@ def read_rows(source, text):
     if not text:
         raise InspectionError('EMPTY_FILE', source)
     reader = csv.reader(StringIO(text, newline=''), strict=True)
-    required = DESIGN if source == 'design' else TRACE
+    accepted = (DESIGN,) if source == 'design' else (TRACE, TRACE_WAVELENGTH)
     header = None
     try:
         while True:
@@ -28,7 +29,7 @@ def read_rows(source, text):
                 continue
             if header is None:
                 header = [value.strip() for value in row]
-                if sorted(header) != sorted(required):
+                if not any(sorted(header) == sorted(required) for required in accepted):
                     raise InspectionError('BAD_HEADER', source)
                 continue
             if row == header:

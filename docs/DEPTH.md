@@ -13,7 +13,7 @@
 | M4 接续净损耗判定 | 对照带符号读数和均值 | POST /api/loss | `app/modules/loss/service.py` | `tests/test_loss.py` |
 | M5 设计与实测对账 | 核对逐接头是否缺证 | POST /api/design | `app/modules/design/service.py` | `tests/test_design.py` |
 | M6 批次留档复跑 | 留档和重跑同一轨迹组 | POST /api/inspections | `app/modules/archive/storage.py` | `tests/test_archive.py` |
-| M7 光纤证据签发 | 复核签发条件并下载 | GET /api/certificate/<id> | `app/modules/certificate/service.py` | `tests/test_certificate.py` |
+| M7 光纤证据签发 | 复核签发条件并下载 | GET /api/certificate/<id> | `app/modules/certificate/service.py` `app/modules/certificate/line.py` | `tests/test_certificate.py` `tests/test_dual.py` |
 
 ## 陷阱登记
 
@@ -28,11 +28,21 @@
 | TRAP-15 | A-02 米和千米并存 | 两条虚假轨迹 | 归一毫米后比对 | `app/modules/trace/units.py` | `tests/test_trace.py::test_equivalent_units_dedupe` |
 | TRAP-19 | A100 可匹配 B97 或 B101 | 最近优先导致 A105 无法配对 | 先最大配对数再最小间差 | `app/modules/pairs/optimal.py` | `tests/test_pairs.py::test_global_pairing_beats_greedy_and_keeps_competition` |
 | TRAP-21 | A700 和 B820 均无对侧 | 只报一端孤测 | 分别记录缺 A 或缺 B | `app/modules/pairs/service.py` | `tests/test_pairs.py::test_opposite_ends_missing_in_both_directions` |
+| TRAP-22 | 同接头 1310 与 1550 读数并存 | 跨波长凑成双端对账 | 配对/判损/对账按波长分组 | `app/modules/pairs/service.py` | `tests/test_dual.py::test_cross_wavelength_same_connector_never_pairs` |
+| TRAP-23 | 补测晚到证实超限，又被冲突记录覆盖 | 试通件照常放行 | 按归档前缀累积超限证据，留痕不撤 | `app/modules/certificate/line.py` | `tests/test_dual.py::test_conflicting_supplement_withdrawn_but_over_limit_stays` |
+| TRAP-24 | 旧留档未标波长 | 旧读数充当双波长凭据 | 无标签读数自成一组，不进波长证据；旧签发件仍按 splice-1.0 核验 | `app/modules/trace/service.py` `app/modules/certificate/service.py` | `tests/test_dual.py::test_unlabeled_readings_never_count_as_wavelength_evidence` |
 
 ## 对账规则
 
 - 6 个设计接头 = 3 通过 + 1 超限 + 2 缺证。
 - 12 条窗内端点 = 2×(4 已挂接 + 1 孤配) + 2 单端。窗外测量另计 1 条。
 - F-01 双向均值 (−0.100+0.300)/2=0.1000 dB，F-03 为 (0.33+0.31)/2=0.3200 dB，超出 0.200 dB。
+
+## 双波长签发规则（splice-2.0）
+
+- 样本 `dual`：1310 三接头双端达标，1550 仅 A 端 → 试通件放行 1310，正式交工待 1550 双端。
+- 样本 `dual_late`：补测 B 端 1550，J-01 均值 (0.11+0.35)/2=0.2300 dB 超限 → 线路证据池留痕，试通件停止放行。
+- 样本 `dual_full`：补测 B 端 1550 全达标 → 两波长均双端达标，正式交工可签发。
+- 线路身份 `line_id` 由全长、两端起偏与设计清单派生；补测与首测同线路即入同一证据池。
 
 输入为设备导出的事件表。二进制曲线解码、坡度自校与电子签章未纳入该工作台。

@@ -3,7 +3,7 @@ from flask import Blueprint, current_app, jsonify
 from .input import request_material
 from .modules.archive.service import archive
 from .modules.archive.storage import get, recent
-from .modules.certificate.service import certify
+from .modules.certificate.service import certify_stored
 from .pipeline import run
 
 api = Blueprint('fiber_api', __name__, url_prefix='/api')
@@ -56,7 +56,7 @@ def inspection(identifier):
 
 @api.get('/certificate/<identifier>')
 def certificate(identifier):
-    return certify(inspection(identifier))
+    return certify_stored(current_app.config['DATABASE'], identifier)
 
 
 @api.get('/export/<identifier>')
